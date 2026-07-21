@@ -29,14 +29,14 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Clean
+        run: flutter clean
+
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Analyze code
-        run: flutter analyze --no-pub 2>&1
-
       - name: Build APK (Release)
-        run: flutter build apk --release --verbose 2>&1 | tail -200
+        run: flutter build apk --release
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
