@@ -77,7 +77,7 @@ class _TrackRecordingScreenState extends State<TrackRecordingScreen> with Single
                         PolylineLayer(
                           polylines: [
                             Polyline(
-                              points: [for (int i = 0; i < state.pointsCount; i++) _jakartaCenter],
+                              points: state.trackPoints,
                               color: theme.colorScheme.primary, strokeWidth: 4,
                             ),
                           ],

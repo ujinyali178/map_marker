@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../data/models/track_model.dart';
 import '../../../data/models/track_point.dart' as data;
@@ -14,6 +15,7 @@ class TrackState extends Equatable {
   final double distance;
   final Duration duration;
   final double currentSpeed;
+  final List<LatLng> trackPoints;
   final List<TrackModel> savedTracks;
   final bool isLoading;
   final String? error;
@@ -26,6 +28,7 @@ class TrackState extends Equatable {
     this.distance = 0.0,
     this.duration = Duration.zero,
     this.currentSpeed = 0.0,
+    this.trackPoints = const [],
     this.savedTracks = const [],
     this.isLoading = false,
     this.error,
@@ -39,6 +42,7 @@ class TrackState extends Equatable {
     double? distance,
     Duration? duration,
     double? currentSpeed,
+    List<LatLng>? trackPoints,
     List<TrackModel>? savedTracks,
     bool? isLoading,
     String? error,
@@ -52,6 +56,7 @@ class TrackState extends Equatable {
       distance: distance ?? this.distance,
       duration: duration ?? this.duration,
       currentSpeed: currentSpeed ?? this.currentSpeed,
+      trackPoints: trackPoints ?? this.trackPoints,
       savedTracks: savedTracks ?? this.savedTracks,
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
@@ -76,6 +81,6 @@ class TrackState extends Equatable {
   @override
   List<Object?> get props => [
     isRecording, isPaused, currentTrack, pointsCount, distance, duration,
-    currentSpeed, savedTracks, isLoading, error,
+    currentSpeed, trackPoints, savedTracks, isLoading, error,
   ];
 }

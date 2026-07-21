@@ -5,6 +5,7 @@ import '../../presentation/screens/folder/folder_editor_screen.dart';
 import '../../presentation/screens/folder/folder_list_screen.dart';
 import '../../presentation/screens/home/home_screen.dart';
 import '../../presentation/screens/map/map_screen.dart';
+import '../../presentation/screens/map/select_location_screen.dart';
 import '../../presentation/screens/navigation/navigation_screen.dart';
 import '../../presentation/screens/poi/poi_detail_screen.dart';
 import '../../presentation/screens/poi/poi_editor_screen.dart';
@@ -24,6 +25,9 @@ class AppRouter {
 
       case '/map':
         return MaterialPageRoute(builder: (_) => const MapScreen(), settings: settings);
+
+      case '/map/select-location':
+        return MaterialPageRoute(builder: (_) => const SelectLocationScreen(), settings: settings);
 
       case '/poi/editor':
         final args = settings.arguments as Map<String, dynamic>?;

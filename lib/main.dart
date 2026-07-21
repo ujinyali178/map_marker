@@ -5,7 +5,6 @@ import 'package:firebase_core/firebase_core.dart';
 
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
-// import 'firebase_options.dart' if (dart.library.io) 'dummy_firebase.dart';
 import 'data/repositories/folder_repository.dart';
 import 'data/repositories/poi_repository.dart';
 import 'data/repositories/sync_repository.dart';
@@ -19,6 +18,7 @@ import 'presentation/bloc/nav_cubit/nav_cubit.dart';
 import 'presentation/bloc/poi_cubit/poi_cubit.dart';
 import 'presentation/bloc/search_cubit/search_cubit.dart';
 import 'presentation/bloc/settings_cubit/settings_cubit.dart';
+import 'presentation/bloc/settings_cubit/settings_state.dart';
 import 'presentation/bloc/sync_cubit/sync_cubit.dart';
 import 'presentation/bloc/track_cubit/track_cubit.dart';
 
@@ -26,9 +26,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     await Firebase.initializeApp();
-  } catch (_) {
-    // Firebase not configured, running offline
-  }
+  } catch (_) {}
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -49,7 +47,7 @@ void main() async {
     MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => PoiCubit(poiRepository)..loadPois()),
-        BlocProvider(create: (_) => FolderCubit(folderRepository)..loadFolders()),
+        BlocProvider(create: (_) => FolderCubit(folderRepository, poiRepository)..loadFolders()),
         BlocProvider(create: (_) => TrackCubit(trackRepository)),
         BlocProvider(create: (_) => SyncCubit(syncRepository)..loadState()),
         BlocProvider(create: (_) => MapCubit()),
@@ -67,17 +65,32 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  ThemeMode _mapThemeMode(ThemeModeOption option) {
+    switch (option) {
+      case ThemeModeOption.light:
+        return ThemeMode.light;
+      case ThemeModeOption.dark:
+        return ThemeMode.dark;
+      case ThemeModeOption.system:
+        return ThemeMode.system;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final appRouter = AppRouter();
 
-    return MaterialApp(
-      title: 'Map Marker',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
-      onGenerateRoute: appRouter.onGenerateRoute,
+    return BlocBuilder<SettingsCubit, SettingsState>(
+      builder: (context, settingsState) {
+        return MaterialApp(
+          title: 'Map Marker',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: _mapThemeMode(settingsState.themeMode),
+          onGenerateRoute: appRouter.onGenerateRoute,
+        );
+      },
     );
   }
 }

@@ -16,7 +16,7 @@ class SettingsState extends Equatable {
   final ThemeModeOption themeMode;
 
   const SettingsState({
-    this.mapType = MapTypeOption.google,
+    this.mapType = MapTypeOption.osm,
     this.defaultZoom = 14.0,
     this.distanceUnit = DistanceUnit.km,
     this.showLabels = true,

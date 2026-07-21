@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -24,9 +25,7 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
 
     return BlocBuilder<PoiCubit, PoiState>(
       builder: (context, state) {
-        final poi = state.pois.where((p) => p.id == widget.poiId).isNotEmpty
-            ? state.pois.firstWhere((p) => p.id == widget.poiId)
-            : null;
+        final poi = state.pois.firstWhereOrNull((p) => p.id == widget.poiId);
 
         if (poi == null) {
           return Scaffold(

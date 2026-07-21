@@ -17,6 +17,8 @@ class TrackCubit extends Cubit<TrackState> {
   Timer? _durationTimer;
   DateTime? _pauseTime;
   Duration _pausedDuration = Duration.zero;
+  LatLng? _lastPosition;
+  final List<LatLng> _trackPoints = [];
 
   TrackCubit(this._trackRepository) : super(const TrackState());
 
@@ -65,12 +67,15 @@ class TrackCubit extends Cubit<TrackState> {
 
       _pausedDuration = Duration.zero;
       _pauseTime = null;
+      _lastPosition = null;
+      _trackPoints.clear();
 
       emit(state.copyWith(
         isRecording: true, isPaused: false,
         currentTrack: track,
         pointsCount: 0, distance: 0.0,
         duration: Duration.zero, currentSpeed: 0.0,
+        trackPoints: [],
         clearError: true,
       ));
 
@@ -156,15 +161,19 @@ class TrackCubit extends Cubit<TrackState> {
       _trackRepository.addPoint(state.currentTrack!.id, point);
     } catch (_) {}
 
-    double newDistance = state.distance + _haversine(
-      LatLng(position.latitude, position.longitude),
-      LatLng(position.latitude, position.longitude),
-    );
+    final currentLatLng = LatLng(position.latitude, position.longitude);
+    double addedDistance = 0.0;
+    if (_lastPosition != null) {
+      addedDistance = _haversine(_lastPosition!, currentLatLng);
+    }
+    _lastPosition = currentLatLng;
+    _trackPoints.add(currentLatLng);
 
     emit(state.copyWith(
       pointsCount: state.pointsCount + 1,
-      distance: newDistance,
+      distance: state.distance + addedDistance,
       currentSpeed: position.speed,
+      trackPoints: List<LatLng>.from(_trackPoints),
     ));
   }
 

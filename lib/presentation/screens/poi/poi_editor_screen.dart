@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,6 +8,7 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 import '../../../data/models/poi_model.dart';
 import '../../../data/models/folder_model.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../bloc/poi_cubit/poi_cubit.dart';
 import '../../bloc/folder_cubit/folder_cubit.dart';
 import '../../bloc/folder_cubit/folder_state.dart';
@@ -69,9 +71,7 @@ class _PoiEditorScreenState extends State<PoiEditorScreen> {
 
   void _loadPoiData() {
     final state = context.read<PoiCubit>().state;
-    final poi = state.pois.where((p) => p.id == widget.poiId).isNotEmpty
-        ? state.pois.firstWhere((p) => p.id == widget.poiId)
-        : null;
+    final poi = state.pois.firstWhereOrNull((p) => p.id == widget.poiId);
     if (poi == null) return;
     _nameController.text = poi.name;
     _descriptionController.text = poi.description;
@@ -364,6 +364,12 @@ class _PoiEditorScreenState extends State<PoiEditorScreen> {
               title: const Text('Ambil Foto'),
               onTap: () async {
                 Navigator.pop(context);
+                if (_images.length >= AppConstants.maxImagesPerPoi) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Maksimal ${AppConstants.maxImagesPerPoi} foto per POI'),
+                  ));
+                  return;
+                }
                 final image = await _picker.pickImage(source: ImageSource.camera, maxWidth: 1920, maxHeight: 1920, imageQuality: 85);
                 if (image != null) setState(() => _images.add(image));
               },
@@ -373,8 +379,20 @@ class _PoiEditorScreenState extends State<PoiEditorScreen> {
               title: const Text('Pilih dari Galeri'),
               onTap: () async {
                 Navigator.pop(context);
+                final remaining = AppConstants.maxImagesPerPoi - _images.length;
+                if (remaining <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Maksimal ${AppConstants.maxImagesPerPoi} foto per POI'),
+                  ));
+                  return;
+                }
                 final images = await _picker.pickMultiImage(maxWidth: 1920, maxHeight: 1920, imageQuality: 85);
-                if (images.isNotEmpty) setState(() => _images.addAll(images));
+                if (images.isNotEmpty) {
+                  setState(() {
+                    final toAdd = images.take(remaining).toList();
+                    _images.addAll(toAdd);
+                  });
+                }
               },
             ),
             const SizedBox(height: 8),
@@ -420,6 +438,7 @@ class _PoiEditorScreenState extends State<PoiEditorScreen> {
     final images = _images.map((x) => x.path).toList();
 
     if (widget.poiId != null) {
+      final existing = cubit.state.pois.firstWhereOrNull((p) => p.id == widget.poiId);
       await cubit.updatePoi(PoiModel(
         id: widget.poiId!,
         name: _nameController.text.trim(),
@@ -430,7 +449,7 @@ class _PoiEditorScreenState extends State<PoiEditorScreen> {
         iconKey: _selectedIconKey,
         folderId: _selectedFolderId,
         images: images,
-        createdAt: DateTime.now(),
+        createdAt: existing?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
       ));
     } else {

@@ -15,9 +15,9 @@ class MapState extends Equatable {
   final String? error;
 
   const MapState({
-    this.cameraPosition = const LatLng(40.4168, -3.7038),
+    this.cameraPosition = const LatLng(-6.2088, 106.8456),
     this.zoom = 14.0,
-    this.mapType = MapTypeOption.google,
+    this.mapType = MapTypeOption.osm,
     this.markers = const <Marker>[],
     this.polylines = const <Polyline>[],
     this.currentLocation,
