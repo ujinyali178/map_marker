@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../data/models/poi_model.dart';
 import '../../bloc/poi_cubit/poi_cubit.dart';
+import '../../bloc/poi_cubit/poi_state.dart';
 
 class PoiDetailScreen extends StatefulWidget {
   final String? poiId;
@@ -52,8 +53,8 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
                     icon: Icon(poi.isFavorite ? Icons.favorite : Icons.favorite_border, color: poi.isFavorite ? Colors.red : null),
                     tooltip: 'Favorit',
                   ),
-                  PopupMenuButton(
-                    itemBuilder: (_) => [
+                  PopupMenuButton<String>(
+                    itemBuilder: (_) => <PopupMenuEntry<String>>[
                       const PopupMenuItem(value: 'edit', child: ListTile(leading: Icon(Icons.edit), title: Text('Edit'), dense: true)),
                       const PopupMenuItem(value: 'navigate', child: ListTile(leading: Icon(Icons.navigation), title: Text('Navigasi'), dense: true)),
                       const PopupMenuDivider(),

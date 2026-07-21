@@ -100,7 +100,7 @@ class SyncScreen extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
+            ],
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,

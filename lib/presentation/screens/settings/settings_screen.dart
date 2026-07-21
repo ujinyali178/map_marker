@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../bloc/map_cubit/map_state.dart';
 import '../../bloc/settings_cubit/settings_cubit.dart';
 import '../../bloc/settings_cubit/settings_state.dart';
 

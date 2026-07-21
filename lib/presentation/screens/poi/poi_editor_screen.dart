@@ -9,6 +9,7 @@ import '../../../data/models/poi_model.dart';
 import '../../../data/models/folder_model.dart';
 import '../../bloc/poi_cubit/poi_cubit.dart';
 import '../../bloc/folder_cubit/folder_cubit.dart';
+import '../../bloc/folder_cubit/folder_state.dart';
 
 class PoiEditorScreen extends StatefulWidget {
   final String? poiId;
