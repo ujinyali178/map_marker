@@ -11,7 +11,6 @@ class MapState extends Equatable {
   final List<Marker> markers;
   final List<Polyline> polylines;
   final LatLng? currentLocation;
-  final double heading;
   final bool isLoading;
   final String? error;
 
@@ -22,7 +21,6 @@ class MapState extends Equatable {
     this.markers = const <Marker>[],
     this.polylines = const <Polyline>[],
     this.currentLocation,
-    this.heading = 0,
     this.isLoading = false,
     this.error,
   });
@@ -34,7 +32,6 @@ class MapState extends Equatable {
     List<Marker>? markers,
     List<Polyline>? polylines,
     LatLng? currentLocation,
-    double? heading,
     bool? isLoading,
     String? error,
     bool clearError = false,
@@ -47,7 +44,6 @@ class MapState extends Equatable {
       markers: markers ?? this.markers,
       polylines: polylines ?? this.polylines,
       currentLocation: clearCurrentLocation ? null : (currentLocation ?? this.currentLocation),
-      heading: heading ?? this.heading,
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
     );
@@ -61,7 +57,6 @@ class MapState extends Equatable {
         markers,
         polylines,
         currentLocation,
-        heading,
         isLoading,
         error,
       ];
