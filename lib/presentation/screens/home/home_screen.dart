@@ -18,6 +18,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentNavIndex = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
@@ -30,10 +31,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
+      key: _scaffoldKey,
       body: IndexedStack(
         index: _currentNavIndex,
         children: [
-          const MapScreen(),
+          MapScreen(scaffoldKey: _scaffoldKey),
           _buildPoiListScreen(theme),
           _buildTracksScreen(theme),
           const SettingsScreen(),

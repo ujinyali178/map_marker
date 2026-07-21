@@ -17,7 +17,9 @@ import '../../widgets/poi_bottom_sheet.dart';
 import '../../widgets/search_bar_widget.dart';
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+  final GlobalKey<ScaffoldState>? scaffoldKey;
+
+  const MapScreen({super.key, this.scaffoldKey});
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -30,10 +32,14 @@ class _MapScreenState extends State<MapScreen> {
   LatLng? _longPressLocation;
   PoiModel? _selectedPoi;
 
+  GlobalKey<ScaffoldState> get _scaffoldKey =>
+      widget.scaffoldKey ?? GlobalKey<ScaffoldState>();
+
   static const _tileUrls = {
     MapTypeOption.google: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     MapTypeOption.osm: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    MapTypeOption.satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    MapTypeOption.satellite:
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     MapTypeOption.terrain: 'https://tile.opentopomap.org/{z}/{x}/{y}.png',
     MapTypeOption.hybrid: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   };
@@ -55,245 +61,295 @@ class _MapScreenState extends State<MapScreen> {
           return BlocBuilder<SettingsCubit, SettingsState>(
             builder: (context, settingsState) {
               final tileUrl = _getTileUrl(settingsState.mapType);
-              return Stack(
-                children: [
-                  FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      initialCenter: const LatLng(
-                        AppConstants.defaultLatitude,
-                        AppConstants.defaultLongitude,
-                      ),
-                      initialZoom: settingsState.defaultZoom,
-                      onLongPress: _onMapLongPress,
-                      onTap: (_, __) {
-                        if (_isLongPressPlacing) {
-                          setState(() {
-                            _isLongPressPlacing = false;
-                            _longPressLocation = null;
-                          });
-                        }
-                      },
-                    ),
+              return BlocBuilder<MapCubit, MapState>(
+                builder: (context, mapState) {
+                  return Stack(
                     children: [
-                      TileLayer(
-                        urlTemplate: tileUrl,
-                        userAgentPackageName: 'com.mapmarker.app',
-                        maxZoom: 19,
-                      ),
-                      MarkerLayer(
-                        markers: poiState.pois.map((poi) {
-                          return Marker(
-                            width: 40,
-                            height: 48,
-                            point: LatLng(poi.latitude, poi.longitude),
-                            child: PoiMarker(
-                              color: Color(poi.color),
-                              icon: _getIconData(poi.iconKey),
-                              isSelected: _selectedPoi?.id == poi.id,
-                              onTap: () => _selectPoi(poi),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      if (_longPressLocation != null)
-                        MarkerLayer(
-                          markers: [
-                            Marker(
-                              width: 40,
-                              height: 52,
-                              point: _longPressLocation!,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.add_location_alt,
-                                    color: theme.colorScheme.primary,
-                                    size: 36,
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: theme.colorScheme.primaryContainer,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      'Tap untuk simpan',
-                                      style: theme.textTheme.labelSmall,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                  Positioned(
-                    top: MediaQuery.of(context).padding.top + 8,
-                    left: 0,
-                    right: 0,
-                    child: SearchBarWidget(
-                      onTap: () async {
-                        final result = await Navigator.of(context)
-                            .pushNamed('/search');
-                        if (result != null && result is Map<String, dynamic>) {
-                          final lat = result['latitude'] as double;
-                          final lng = result['longitude'] as double;
-                          _mapController.move(
-                            LatLng(lat, lng),
-                            16,
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                  Positioned(
-                    right: 16,
-                    bottom: 100,
-                    child: Column(
-                      children: [
-                        FloatingActionButton.small(
-                          heroTag: 'zoom_in',
-                          onPressed: () {
-                            _mapController.move(
-                              _mapController.camera.center,
-                              _mapController.camera.zoom + 1,
-                            );
+                      FlutterMap(
+                        mapController: _mapController,
+                        options: MapOptions(
+                          initialCenter: const LatLng(
+                            AppConstants.defaultLatitude,
+                            AppConstants.defaultLongitude,
+                          ),
+                          initialZoom: settingsState.defaultZoom,
+                          onLongPress: _onMapLongPress,
+                          onTap: (_, __) {
+                            if (_isLongPressPlacing) {
+                              setState(() {
+                                _isLongPressPlacing = false;
+                                _longPressLocation = null;
+                              });
+                            }
                           },
-                          child: const Icon(Icons.add),
                         ),
-                        const SizedBox(height: 8),
-                        FloatingActionButton.small(
-                          heroTag: 'zoom_out',
-                          onPressed: () {
-                            _mapController.move(
-                              _mapController.camera.center,
-                              _mapController.camera.zoom - 1,
-                            );
-                          },
-                          child: const Icon(Icons.remove),
-                        ),
-                        const SizedBox(height: 8),
-                        FloatingActionButton.small(
-                          heroTag: 'my_location',
-                          onPressed: () {
-                            context.read<MapCubit>().getCurrentLocation();
-                          },
-                          child: const Icon(Icons.my_location),
-                        ),
-                      ],
-                    ),
-                  ),
-                  BlocListener<MapCubit, MapState>(
-                    listener: (context, mapState) {
-                      if (mapState.currentLocation != null) {
-                        _mapController.move(
-                          mapState.currentLocation!,
-                          15,
-                        );
-                      }
-                    },
-                    child: const SizedBox.shrink(),
-                  ),
-                  Positioned(
-                    left: 16,
-                    bottom: 100,
-                    child: Column(
-                      children: [
-                        FloatingActionButton.small(
-                          heroTag: 'layers',
-                          onPressed: _showLayerOptions,
-                          child: const Icon(Icons.layers),
-                        ),
-                        const SizedBox(height: 8),
-                        FloatingActionButton.small(
-                          heroTag: 'compass',
-                          onPressed: () {
-                            _mapController.move(
-                              _mapController.camera.center,
-                              _mapController.camera.zoom,
-                            );
-                          },
-                          child: const Icon(Icons.explore),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    top: MediaQuery.of(context).padding.top + 60,
-                    left: 16,
-                    child: FloatingActionButton(
-                      heroTag: 'drawer',
-                      mini: true,
-                      onPressed: () => Scaffold.of(context).openDrawer(),
-                      child: const Icon(Icons.menu),
-                    ),
-                  ),
-                  if (_isLongPressPlacing)
-                    Positioned.fill(
-                      child: Container(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        child: Center(
-                          child: Card(
-                            margin: const EdgeInsets.symmetric(horizontal: 32),
-                            child: Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.add_location_alt,
-                                    size: 48,
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'Buat POI baru di lokasi ini?',
-                                    style: theme.textTheme.titleMedium,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
+                        children: [
+                          TileLayer(
+                            urlTemplate: tileUrl,
+                            userAgentPackageName: 'com.mapmarker.app',
+                            maxZoom: 19,
+                          ),
+                          MarkerLayer(
+                            markers: poiState.pois.map((poi) {
+                              return Marker(
+                                width: 40,
+                                height: 48,
+                                point: LatLng(poi.latitude, poi.longitude),
+                                child: PoiMarker(
+                                  color: Color(poi.color),
+                                  icon: _getIconData(poi.iconKey),
+                                  isSelected: _selectedPoi?.id == poi.id,
+                                  onTap: () => _selectPoi(poi),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          if (_longPressLocation != null)
+                            MarkerLayer(
+                              markers: [
+                                Marker(
+                                  width: 40,
+                                  height: 52,
+                                  point: _longPressLocation!,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      TextButton(
-                                        onPressed: () => setState(() {
-                                          _isLongPressPlacing = false;
-                                          _longPressLocation = null;
-                                        }),
-                                        child: const Text('Batal'),
+                                      Icon(
+                                        Icons.add_location_alt,
+                                        color: theme.colorScheme.primary,
+                                        size: 36,
                                       ),
-                                      FilledButton(
-                                        onPressed: () {
-                                          setState(() =>
-                                              _isLongPressPlacing = false);
-                                          Navigator.of(context).pushNamed(
-                                            '/poi/editor',
-                                            arguments: {
-                                              'latitude':
-                                                  _longPressLocation?.latitude,
-                                              'longitude':
-                                                  _longPressLocation?.longitude,
-                                            },
-                                          );
-                                        },
-                                        child: const Text('Buat POI'),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: theme
+                                              .colorScheme.primaryContainer,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          'Tap untuk simpan',
+                                          style: theme.textTheme.labelSmall,
+                                        ),
                                       ),
                                     ],
                                   ),
-                                ],
+                                ),
+                              ],
+                            ),
+                          if (mapState.currentLocation != null)
+                            MarkerLayer(
+                              markers: [
+                                Marker(
+                                  width: 24,
+                                  height: 24,
+                                  point: mapState.currentLocation!,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 3,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black
+                                              .withValues(alpha: 0.3),
+                                          blurRadius: 6,
+                                          spreadRadius: 2,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                      Positioned(
+                        top: MediaQuery.of(context).padding.top + 8,
+                        left: 0,
+                        right: 0,
+                        child: SearchBarWidget(
+                          onTap: () async {
+                            final result = await Navigator.of(context)
+                                .pushNamed('/search');
+                            if (result != null &&
+                                result is Map<String, dynamic>) {
+                              final lat = result['latitude'] as double;
+                              final lng = result['longitude'] as double;
+                              _mapController.move(
+                                LatLng(lat, lng),
+                                16,
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                      Positioned(
+                        right: 16,
+                        bottom: 100,
+                        child: Column(
+                          children: [
+                            FloatingActionButton.small(
+                              heroTag: 'zoom_in',
+                              onPressed: () {
+                                _mapController.move(
+                                  _mapController.camera.center,
+                                  _mapController.camera.zoom + 1,
+                                );
+                              },
+                              child: const Icon(Icons.add),
+                            ),
+                            const SizedBox(height: 8),
+                            FloatingActionButton.small(
+                              heroTag: 'zoom_out',
+                              onPressed: () {
+                                _mapController.move(
+                                  _mapController.camera.center,
+                                  _mapController.camera.zoom - 1,
+                                );
+                              },
+                              child: const Icon(Icons.remove),
+                            ),
+                            const SizedBox(height: 8),
+                            FloatingActionButton.small(
+                              heroTag: 'my_location',
+                              onPressed: () {
+                                context.read<MapCubit>().getCurrentLocation();
+                              },
+                              child: const Icon(Icons.my_location),
+                            ),
+                          ],
+                        ),
+                      ),
+                      BlocListener<MapCubit, MapState>(
+                        listener: (context, mapState) {
+                          if (mapState.currentLocation != null) {
+                            _mapController.move(
+                              mapState.currentLocation!,
+                              15,
+                            );
+                          }
+                        },
+                        child: const SizedBox.shrink(),
+                      ),
+                      Positioned(
+                        left: 16,
+                        bottom: 100,
+                        child: Column(
+                          children: [
+                            FloatingActionButton.small(
+                              heroTag: 'layers',
+                              onPressed: _showLayerOptions,
+                              child: const Icon(Icons.layers),
+                            ),
+                            const SizedBox(height: 8),
+                            FloatingActionButton.small(
+                              heroTag: 'compass',
+                              onPressed: () {
+                                _mapController.move(
+                                  _mapController.camera.center,
+                                  _mapController.camera.zoom,
+                                );
+                              },
+                              child: const Icon(Icons.explore),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        top: MediaQuery.of(context).padding.top + 60,
+                        left: 16,
+                        child: FloatingActionButton(
+                          heroTag: 'drawer',
+                          mini: true,
+                          onPressed: () {
+                            _scaffoldKey.currentState?.openDrawer();
+                          },
+                          child: const Icon(Icons.menu),
+                        ),
+                      ),
+                      if (_isLongPressPlacing)
+                        Positioned.fill(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onTap: () => setState(() {
+                              _isLongPressPlacing = false;
+                              _longPressLocation = null;
+                            }),
+                            child: Container(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              child: Center(
+                                child: Card(
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 32),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(20),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.add_location_alt,
+                                          size: 48,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          'Buat POI baru di lokasi ini?',
+                                          style:
+                                              theme.textTheme.titleMedium,
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceEvenly,
+                                          children: [
+                                            TextButton(
+                                              onPressed: () => setState(() {
+                                                _isLongPressPlacing = false;
+                                                _longPressLocation = null;
+                                              }),
+                                              child: const Text('Batal'),
+                                            ),
+                                            FilledButton(
+                                              onPressed: () {
+                                                setState(() =>
+                                                    _isLongPressPlacing =
+                                                        false);
+                                                Navigator.of(context)
+                                                    .pushNamed(
+                                                  '/poi/editor',
+                                                  arguments: {
+                                                    'latitude':
+                                                        _longPressLocation
+                                                            ?.latitude,
+                                                    'longitude':
+                                                        _longPressLocation
+                                                            ?.longitude,
+                                                  },
+                                                );
+                                              },
+                                              child: const Text('Buat POI'),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                ],
+                    ],
+                  );
+                },
               );
             },
           );
@@ -364,7 +420,6 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _showLayerOptions() {
-    final currentType = context.read<MapCubit>().state.mapType;
     showModalBottomSheet(
       context: context,
       builder: (_) => SafeArea(
@@ -384,13 +439,16 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Text('Jenis Peta', style: Theme.of(context).textTheme.titleMedium),
+            Text('Jenis Peta',
+                style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             ListTile(
               leading: const Icon(Icons.map),
               title: const Text('Standar (OSM)'),
               onTap: () {
-                context.read<SettingsCubit>().updateMapType(MapTypeOption.osm);
+                context
+                    .read<SettingsCubit>()
+                    .updateMapType(MapTypeOption.osm);
                 Navigator.pop(context);
               },
             ),
