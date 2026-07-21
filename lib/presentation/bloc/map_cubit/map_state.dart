@@ -17,7 +17,7 @@ class MapState extends Equatable {
   const MapState({
     this.cameraPosition = const LatLng(-6.2088, 106.8456),
     this.zoom = 14.0,
-    this.mapType = MapTypeOption.google,
+    this.mapType = MapTypeOption.osm,
     this.markers = const <Marker>[],
     this.polylines = const <Polyline>[],
     this.currentLocation,

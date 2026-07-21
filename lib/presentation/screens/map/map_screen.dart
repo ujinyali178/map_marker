@@ -3,15 +3,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/constants/api_endpoints.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../data/models/poi_model.dart';
 import '../../bloc/map_cubit/map_cubit.dart';
 import '../../bloc/map_cubit/map_state.dart';
 import '../../bloc/poi_cubit/poi_cubit.dart';
 import '../../bloc/poi_cubit/poi_state.dart';
+import '../../bloc/settings_cubit/settings_cubit.dart';
+import '../../bloc/settings_cubit/settings_state.dart';
 import '../../widgets/poi_marker.dart';
 import '../../widgets/poi_bottom_sheet.dart';
 import '../../widgets/search_bar_widget.dart';
-import '../../widgets/route_panel.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -49,15 +52,19 @@ class _MapScreenState extends State<MapScreen> {
     return Scaffold(
       body: BlocBuilder<PoiCubit, PoiState>(
         builder: (context, poiState) {
-          return BlocBuilder<MapCubit, MapState>(
-            builder: (context, mapState) {
+          return BlocBuilder<SettingsCubit, SettingsState>(
+            builder: (context, settingsState) {
+              final tileUrl = _getTileUrl(settingsState.mapType);
               return Stack(
                 children: [
                   FlutterMap(
                     mapController: _mapController,
                     options: MapOptions(
-                      initialCenter: const LatLng(-6.2088, 106.8456),
-                      initialZoom: 13,
+                      initialCenter: const LatLng(
+                        AppConstants.defaultLatitude,
+                        AppConstants.defaultLongitude,
+                      ),
+                      initialZoom: settingsState.defaultZoom,
                       onLongPress: _onMapLongPress,
                       onTap: (_, __) {
                         if (_isLongPressPlacing) {
@@ -70,7 +77,7 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                     children: [
                       TileLayer(
-                        urlTemplate: _tileUrls[mapState.mapType] ?? _tileUrls[MapTypeOption.google]!,
+                        urlTemplate: tileUrl,
                         userAgentPackageName: 'com.mapmarker.app',
                         maxZoom: 19,
                       ),
@@ -89,30 +96,6 @@ class _MapScreenState extends State<MapScreen> {
                           );
                         }).toList(),
                       ),
-                      if (mapState.currentLocation != null)
-                        MarkerLayer(
-                          markers: [
-                            Marker(
-                              width: 24,
-                              height: 24,
-                              point: mapState.currentLocation!,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.blue,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 3),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.blue.withOpacity(0.4),
-                                      blurRadius: 8,
-                                      spreadRadius: 2,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
                       if (_longPressLocation != null)
                         MarkerLayer(
                           markers: [
@@ -129,12 +112,18 @@ class _MapScreenState extends State<MapScreen> {
                                     size: 36,
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: theme.colorScheme.primaryContainer,
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                    child: Text('Tap untuk simpan', style: theme.textTheme.labelSmall),
+                                    child: Text(
+                                      'Tap untuk simpan',
+                                      style: theme.textTheme.labelSmall,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -148,7 +137,18 @@ class _MapScreenState extends State<MapScreen> {
                     left: 0,
                     right: 0,
                     child: SearchBarWidget(
-                      onTap: _openSearch,
+                      onTap: () async {
+                        final result = await Navigator.of(context)
+                            .pushNamed('/search');
+                        if (result != null && result is Map<String, dynamic>) {
+                          final lat = result['latitude'] as double;
+                          final lng = result['longitude'] as double;
+                          _mapController.move(
+                            LatLng(lat, lng),
+                            16,
+                          );
+                        }
+                      },
                     ),
                   ),
                   Positioned(
@@ -159,8 +159,10 @@ class _MapScreenState extends State<MapScreen> {
                         FloatingActionButton.small(
                           heroTag: 'zoom_in',
                           onPressed: () {
-                            final currentZoom = _mapController.camera.zoom;
-                            _mapController.move(_mapController.camera.center, currentZoom + 1);
+                            _mapController.move(
+                              _mapController.camera.center,
+                              _mapController.camera.zoom + 1,
+                            );
                           },
                           child: const Icon(Icons.add),
                         ),
@@ -168,8 +170,10 @@ class _MapScreenState extends State<MapScreen> {
                         FloatingActionButton.small(
                           heroTag: 'zoom_out',
                           onPressed: () {
-                            final currentZoom = _mapController.camera.zoom;
-                            _mapController.move(_mapController.camera.center, currentZoom - 1);
+                            _mapController.move(
+                              _mapController.camera.center,
+                              _mapController.camera.zoom - 1,
+                            );
                           },
                           child: const Icon(Icons.remove),
                         ),
@@ -178,15 +182,22 @@ class _MapScreenState extends State<MapScreen> {
                           heroTag: 'my_location',
                           onPressed: () {
                             context.read<MapCubit>().getCurrentLocation();
-                            final loc = context.read<MapCubit>().state.currentLocation;
-                            if (loc != null) {
-                              _mapController.move(loc, 15);
-                            }
                           },
                           child: const Icon(Icons.my_location),
                         ),
                       ],
                     ),
+                  ),
+                  BlocListener<MapCubit, MapState>(
+                    listener: (context, mapState) {
+                      if (mapState.currentLocation != null) {
+                        _mapController.move(
+                          mapState.currentLocation!,
+                          15,
+                        );
+                      }
+                    },
+                    child: const SizedBox.shrink(),
                   ),
                   Positioned(
                     left: 16,
@@ -206,7 +217,6 @@ class _MapScreenState extends State<MapScreen> {
                               _mapController.camera.center,
                               _mapController.camera.zoom,
                             );
-                            _mapController.rotate(0);
                           },
                           child: const Icon(Icons.explore),
                         ),
@@ -226,7 +236,7 @@ class _MapScreenState extends State<MapScreen> {
                   if (_isLongPressPlacing)
                     Positioned.fill(
                       child: Container(
-                        color: Colors.black.withOpacity(0.3),
+                        color: Colors.black.withValues(alpha: 0.3),
                         child: Center(
                           child: Card(
                             margin: const EdgeInsets.symmetric(horizontal: 32),
@@ -235,25 +245,40 @@ class _MapScreenState extends State<MapScreen> {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.add_location_alt, size: 48, color: theme.colorScheme.primary),
+                                  Icon(
+                                    Icons.add_location_alt,
+                                    size: 48,
+                                    color: theme.colorScheme.primary,
+                                  ),
                                   const SizedBox(height: 12),
-                                  Text('Buat POI baru di lokasi ini?', style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
+                                  Text(
+                                    'Buat POI baru di lokasi ini?',
+                                    style: theme.textTheme.titleMedium,
+                                    textAlign: TextAlign.center,
+                                  ),
                                   const SizedBox(height: 16),
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
                                     children: [
                                       TextButton(
-                                        onPressed: () => setState(() { _isLongPressPlacing = false; _longPressLocation = null; }),
+                                        onPressed: () => setState(() {
+                                          _isLongPressPlacing = false;
+                                          _longPressLocation = null;
+                                        }),
                                         child: const Text('Batal'),
                                       ),
                                       FilledButton(
                                         onPressed: () {
-                                          setState(() => _isLongPressPlacing = false);
+                                          setState(() =>
+                                              _isLongPressPlacing = false);
                                           Navigator.of(context).pushNamed(
                                             '/poi/editor',
                                             arguments: {
-                                              'latitude': _longPressLocation?.latitude,
-                                              'longitude': _longPressLocation?.longitude,
+                                              'latitude':
+                                                  _longPressLocation?.latitude,
+                                              'longitude':
+                                                  _longPressLocation?.longitude,
                                             },
                                           );
                                         },
@@ -276,7 +301,8 @@ class _MapScreenState extends State<MapScreen> {
       ),
       floatingActionButton: !_isNavigating
           ? FloatingActionButton.extended(
-              onPressed: () => Navigator.of(context).pushNamed('/poi/editor'),
+              onPressed: () =>
+                  Navigator.of(context).pushNamed('/poi/editor'),
               icon: const Icon(Icons.add),
               label: const Text('Tambah POI'),
             )
@@ -324,12 +350,14 @@ class _MapScreenState extends State<MapScreen> {
         },
         onEdit: () {
           Navigator.pop(context);
-          Navigator.of(context).pushNamed('/poi/editor', arguments: {'poiId': poi.id});
+          Navigator.of(context)
+              .pushNamed('/poi/editor', arguments: {'poiId': poi.id});
         },
         onShare: () => Navigator.pop(context),
         onViewDetail: () {
           Navigator.pop(context);
-          Navigator.of(context).pushNamed('/poi/detail', arguments: {'poiId': poi.id});
+          Navigator.of(context)
+              .pushNamed('/poi/detail', arguments: {'poiId': poi.id});
         },
       ),
     );
@@ -344,34 +372,45 @@ class _MapScreenState extends State<MapScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 8),
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(2))),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
             const SizedBox(height: 16),
             Text('Jenis Peta', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             ListTile(
               leading: const Icon(Icons.map),
               title: const Text('Standar (OSM)'),
-              trailing: currentType == MapTypeOption.google ? const Icon(Icons.check) : null,
               onTap: () {
-                context.read<MapCubit>().setMapType(MapTypeOption.google);
+                context.read<SettingsCubit>().updateMapType(MapTypeOption.osm);
                 Navigator.pop(context);
               },
             ),
             ListTile(
               leading: const Icon(Icons.terrain),
               title: const Text('Topografi'),
-              trailing: currentType == MapTypeOption.terrain ? const Icon(Icons.check) : null,
               onTap: () {
-                context.read<MapCubit>().setMapType(MapTypeOption.terrain);
+                context
+                    .read<SettingsCubit>()
+                    .updateMapType(MapTypeOption.terrain);
                 Navigator.pop(context);
               },
             ),
             ListTile(
               leading: const Icon(Icons.satellite_alt),
               title: const Text('Satelit'),
-              trailing: currentType == MapTypeOption.satellite ? const Icon(Icons.check) : null,
               onTap: () {
-                context.read<MapCubit>().setMapType(MapTypeOption.satellite);
+                context
+                    .read<SettingsCubit>()
+                    .updateMapType(MapTypeOption.satellite);
                 Navigator.pop(context);
               },
             ),
@@ -380,6 +419,22 @@ class _MapScreenState extends State<MapScreen> {
         ),
       ),
     );
+  }
+
+  String _getTileUrl(MapTypeOption mapType) {
+    switch (mapType) {
+      case MapTypeOption.google:
+        return ApiEndpoints.googleTile;
+      case MapTypeOption.satellite:
+        return ApiEndpoints.satelliteTile;
+      case MapTypeOption.terrain:
+        return ApiEndpoints.terrainTile;
+      case MapTypeOption.hybrid:
+        return ApiEndpoints.satelliteTile;
+      case MapTypeOption.osm:
+      default:
+        return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+    }
   }
 
   IconData _getIconData(String iconKey) {

@@ -93,6 +93,20 @@ class PoiRepository {
     }
   }
 
+  Future<void> clearFolderForPois(String folderId) async {
+    try {
+      final rows = await _database.getPoisByFolder(folderId);
+      for (final row in rows) {
+        await _database.updatePoi(PoiTableCompanion(
+          id: Value(row.id),
+          folderId: const Value(null),
+        ));
+      }
+    } catch (e) {
+      throw PoiRepositoryException('Failed to clear folder for POIs: $e');
+    }
+  }
+
   PoiModel _rowToModel(PoiTableData row) {
     return PoiModel(
       id: row.id,

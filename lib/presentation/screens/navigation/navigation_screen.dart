@@ -1,11 +1,11 @@
-import 'dart:async';
-import 'dart:math';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../bloc/nav_cubit/nav_cubit.dart';
+import '../../bloc/nav_cubit/nav_state.dart';
 import '../../widgets/route_panel.dart';
 
 class NavigationScreen extends StatefulWidget {
@@ -24,250 +24,238 @@ class NavigationScreen extends StatefulWidget {
 
 class _NavigationScreenState extends State<NavigationScreen> {
   final MapController _mapController = MapController();
-  bool _isNavigating = true;
-  double _currentHeading = 0;
-  double _currentSpeed = 0;
-  double _remainingDistance = 5200;
-  Duration _remainingTime = const Duration(minutes: 15);
-  int _currentStepIndex = 0;
-  Timer? _simulationTimer;
 
   static const LatLng _jakartaCenter = LatLng(-6.2088, 106.8456);
-
-  List<_NavigationStep> _steps = [];
-  List<LatLng> _routePoints = [];
 
   @override
   void initState() {
     super.initState();
-    _initRoute();
-    _startSimulation();
+    _startNavigation();
   }
 
-  void _initRoute() {
-    final dest = widget.destination ?? _jakartaCenter;
-    _routePoints = [
-      _jakartaCenter,
-      dest,
-    ];
-    final dist = Geolocator.distanceBetween(
-      _jakartaCenter.latitude, _jakartaCenter.longitude,
-      dest.latitude, dest.longitude,
-    );
-    _remainingDistance = dist;
-    _remainingTime = Duration(seconds: (dist / 10).round());
-    _steps = [
-      _NavigationStep(instruction: 'Mulai navigasi dari lokasi Anda', distance: 0, icon: Icons.play_arrow),
-      _NavigationStep(instruction: 'Menuju ${widget.destinationName ?? "tujuan"}', distance: dist.round(), icon: Icons.straight),
-      _NavigationStep(instruction: 'Lokasi tujuan ada di sekitar Anda', distance: 0, icon: Icons.location_on),
-    ];
-  }
+  void _startNavigation() {
+    final dest = widget.destination;
+    if (dest == null) return;
 
-  void _startSimulation() {
-    _simulationTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (!mounted || !_isNavigating) {
-        timer.cancel();
-        return;
-      }
-
-      final random = Random();
-      setState(() {
-        _currentSpeed = 30 + random.nextDouble() * 30;
-        _remainingDistance = max(0, _remainingDistance - 50 - random.nextDouble() * 50);
-        _remainingTime = Duration(
-          seconds: (_remainingDistance / (_currentSpeed * 0.2778)).round(),
+    context.read<NavigationCubit>().startNavigation(
+          NavDestination(
+            id: 'nav_dest',
+            name: widget.destinationName ?? 'Tujuan',
+            latitude: dest.latitude,
+            longitude: dest.longitude,
+          ),
         );
-
-        if (_remainingDistance < 500 && _currentStepIndex < _steps.length - 1) {
-          _currentStepIndex++;
-        }
-
-        if (_remainingDistance <= 0) {
-          _isNavigating = false;
-          timer.cancel();
-        }
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _simulationTimer?.cancel();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final destination = widget.destination ?? const LatLng(-6.1751, 106.8650);
+    final destination = widget.destination ?? _jakartaCenter;
 
     return Scaffold(
-      body: Stack(
-        children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: _routePoints.first,
-              initialZoom: 14,
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.mapmarker.app',
+      body: BlocConsumer<NavigationCubit, NavState>(
+        listener: (context, navState) {
+          if (!navState.isActive && navState.routePoints.isEmpty) return;
+          if (navState.routePoints.isNotEmpty) {
+            _mapController.fitCamera(
+              CameraFit.bounds(
+                bounds: LatLngBounds.fromPoints(navState.routePoints),
+                padding: const EdgeInsets.all(50),
               ),
-              PolylineLayer(
-                polylines: [
-                  Polyline(
-                    points: _routePoints,
-                    color: theme.colorScheme.primary,
-                    strokeWidth: 5,
+            );
+          }
+        },
+        builder: (context, navState) {
+          return Stack(
+            children: [
+              FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: navState.routePoints.isNotEmpty
+                      ? navState.routePoints.first
+                      : _jakartaCenter,
+                  initialZoom: 14,
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.mapmarker.app',
+                  ),
+                  if (navState.routePoints.isNotEmpty)
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(
+                          points: navState.routePoints,
+                          color: theme.colorScheme.primary,
+                          strokeWidth: 5,
+                        ),
+                      ],
+                    ),
+                  MarkerLayer(
+                    markers: [
+                      if (navState.routePoints.isNotEmpty)
+                        Marker(
+                          width: 24,
+                          height: 24,
+                          point: navState.routePoints.first,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                              border:
+                                  Border.all(color: Colors.white, width: 3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.blue.withValues(alpha: 0.4),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      Marker(
+                        width: 40,
+                        height: 48,
+                        point: destination,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.errorContainer,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                widget.destinationName ?? 'Tujuan',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color:
+                                      theme.colorScheme.onErrorContainer,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              Icons.location_on,
+                              color: theme.colorScheme.error,
+                              size: 32,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              MarkerLayer(
-                markers: [
-                  Marker(
-                    width: 24,
-                    height: 24,
-                    point: _routePoints.first,
-                    child: Container(
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 8,
+                left: 16,
+                right: 16,
+                child: _buildDirectionBanner(theme, navState),
+              ),
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 140,
+                right: 16,
+                child: Column(
+                  children: [
+                    _buildSpeedIndicator(theme, navState),
+                    const SizedBox(height: 8),
+                    Container(
                       decoration: BoxDecoration(
-                        color: Colors.blue,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.blue.withOpacity(0.4),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 8,
-                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              _mapController.move(
+                                _mapController.camera.center,
+                                _mapController.camera.zoom + 1,
+                              );
+                            },
+                            icon: const Icon(Icons.add),
+                          ),
+                          Container(
+                            height: 1,
+                            color: theme.colorScheme.outline
+                                .withValues(alpha: 0.2),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              _mapController.move(
+                                _mapController.camera.center,
+                                _mapController.camera.zoom - 1,
+                              );
+                            },
+                            icon: const Icon(Icons.remove),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                  Marker(
-                    width: 40,
-                    height: 48,
-                    point: destination,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.errorContainer,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            widget.destinationName ?? 'Tujuan',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onErrorContainer,
-                            ),
-                          ),
-                        ),
-                        Icon(
-                          Icons.location_on,
-                          color: theme.colorScheme.error,
-                          size: 32,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                  ],
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: navState.isActive
+                    ? RoutePanel(
+                        remainingDistance: _formatDistance(
+                            navState.remainingDistance),
+                        remainingTime: _formatDuration(Duration(
+                            seconds: navState.remainingDuration.round())),
+                        nextInstruction: navState.currentStep <
+                                navState.steps.length
+                            ? _getStepInstruction(
+                                navState.steps[navState.currentStep])
+                            : 'Menuju tujuan...',
+                        distanceToNextStep: navState.currentStep <
+                                navState.steps.length
+                            ? navState.steps[navState.currentStep].distance
+                            : 0,
+                        isNavigating: true,
+                        onStopNavigation: _stopNavigation,
+                      )
+                    : _buildArrivalPanel(theme, navState),
               ),
             ],
-          ),
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
-            left: 16,
-            right: 16,
-            child: _buildDirectionBanner(theme),
-          ),
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 80,
-            left: 0,
-            right: 0,
-            child: _buildCompassHeading(theme),
-          ),
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 140,
-            right: 16,
-            child: Column(
-              children: [
-                _buildSpeedIndicator(theme),
-                const SizedBox(height: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 8,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      IconButton(
-                        onPressed: () {
-                          _mapController.move(
-                            _mapController.camera.center,
-                            _mapController.camera.zoom + 1,
-                          );
-                        },
-                        icon: const Icon(Icons.add),
-                      ),
-                      Container(
-                        height: 1,
-                        color: theme.colorScheme.outline.withOpacity(0.2),
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          _mapController.move(
-                            _mapController.camera.center,
-                            _mapController.camera.zoom - 1,
-                          );
-                        },
-                        icon: const Icon(Icons.remove),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: _isNavigating
-                ? RoutePanel(
-                    remainingDistance: _formatDistance(_remainingDistance),
-                    remainingTime: _formatDuration(_remainingTime),
-                    nextInstruction: _currentStepIndex < _steps.length
-                        ? _steps[_currentStepIndex].instruction
-                        : 'Anda sudah sampai!',
-                    distanceToNextStep: _currentStepIndex < _steps.length
-                        ? _steps[_currentStepIndex].distance.toDouble()
-                        : 0,
-                    isNavigating: true,
-                    onStopNavigation: _stopNavigation,
-                  )
-                : _buildArrivalPanel(theme),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildDirectionBanner(ThemeData theme) {
-    if (_currentStepIndex >= _steps.length) return const SizedBox.shrink();
+  String _getStepInstruction(NavStep step) {
+    final parts = <String>[];
+    if (step.modifier != null) {
+      parts.add(step.modifier!);
+    }
+    if (step.instruction.isNotEmpty) {
+      parts.add(step.instruction);
+    }
+    return parts.isNotEmpty ? parts.join(' ') : 'Lurus terus';
+  }
 
-    final step = _steps[_currentStepIndex];
+  Widget _buildDirectionBanner(ThemeData theme, NavState navState) {
+    if (!navState.isActive || navState.steps.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final stepIndex = navState.currentStep;
+    if (stepIndex >= navState.steps.length) return const SizedBox.shrink();
+    final step = navState.steps[stepIndex];
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -276,7 +264,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
           ),
         ],
@@ -291,7 +279,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
-              step.icon,
+              _getStepIcon(step),
               color: theme.colorScheme.onPrimary,
               size: 28,
             ),
@@ -303,7 +291,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  step.instruction,
+                  _getStepInstruction(step),
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -312,9 +300,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 ),
                 if (step.distance > 0)
                   Text(
-                    _formatDistance(step.distance.toDouble()),
+                    _formatDistance(step.distance),
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onPrimaryContainer.withOpacity(0.7),
+                      color: theme.colorScheme.onPrimaryContainer
+                          .withValues(alpha: 0.7),
                     ),
                   ),
               ],
@@ -325,45 +314,21 @@ class _NavigationScreenState extends State<NavigationScreen> {
     );
   }
 
-  Widget _buildCompassHeading(ThemeData theme) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface.withOpacity(0.9),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Transform.rotate(
-              angle: _currentHeading * pi / 180,
-              child: Icon(
-                Icons.navigation,
-                color: theme.colorScheme.primary,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '${_currentHeading.round()}° ${_getCardinalDirection(_currentHeading)}',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  IconData _getStepIcon(NavStep step) {
+    final modifier = step.modifier ?? '';
+    if (modifier.contains('left')) return Icons.turn_left;
+    if (modifier.contains('right')) return Icons.turn_right;
+    if (modifier.contains('straight') || step.mode == 'driving') {
+      return Icons.straight;
+    }
+    return Icons.navigation;
   }
 
-  Widget _buildSpeedIndicator(ThemeData theme) {
+  Widget _buildSpeedIndicator(ThemeData theme, NavState navState) {
+    final speed = navState.remainingDistance > 0 && navState.remainingDuration > 0
+        ? (navState.remainingDistance / navState.remainingDuration) * 3.6
+        : 0.0;
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -371,7 +336,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
           ),
         ],
@@ -379,16 +344,18 @@ class _NavigationScreenState extends State<NavigationScreen> {
       child: Column(
         children: [
           Text(
-            '${_currentSpeed.round()}',
+            '${speed.round()}',
             style: theme.textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: _currentSpeed > 60 ? theme.colorScheme.error : null,
+              color:
+                  speed > 60 ? theme.colorScheme.error : null,
             ),
           ),
           Text(
             'km/j',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.5),
+              color:
+                  theme.colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
         ],
@@ -396,15 +363,16 @@ class _NavigationScreenState extends State<NavigationScreen> {
     );
   }
 
-  Widget _buildArrivalPanel(ThemeData theme) {
+  Widget _buildArrivalPanel(ThemeData theme, NavState navState) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 12,
             offset: const Offset(0, -4),
           ),
@@ -415,7 +383,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
+            const Icon(
               Icons.check_circle,
               color: Colors.green,
               size: 64,
@@ -431,7 +399,8 @@ class _NavigationScreenState extends State<NavigationScreen> {
             Text(
               widget.destinationName ?? 'Tujuan',
               style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color:
+                    theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
             const SizedBox(height: 20),
@@ -468,51 +437,30 @@ class _NavigationScreenState extends State<NavigationScreen> {
     return '${duration.inMinutes} menit';
   }
 
-  String _getCardinalDirection(double heading) {
-    if (heading >= 337.5 || heading < 22.5) return 'U';
-    if (heading >= 22.5 && heading < 67.5) return 'TL';
-    if (heading >= 67.5 && heading < 112.5) return 'T';
-    if (heading >= 112.5 && heading < 157.5) return 'TG';
-    if (heading >= 157.5 && heading < 202.5) return 'S';
-    if (heading >= 202.5 && heading < 247.5) return 'BD';
-    if (heading >= 247.5 && heading < 292.5) return 'B';
-    return 'BL';
-  }
-
   void _stopNavigation() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Hentikan Navigasi?'),
-        content: const Text('Apakah Anda yakin ingin menghentikan navigasi?'),
+        content: const Text(
+            'Apakah Anda yakin ingin menghentikan navigasi?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Lanjutkan'),
           ),
           FilledButton(
             onPressed: () {
-              Navigator.pop(context);
-              setState(() => _isNavigating = false);
+              Navigator.pop(dialogContext);
+              context.read<NavigationCubit>().stopNavigation();
               Navigator.of(context).pop();
             },
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+                backgroundColor: Colors.red),
             child: const Text('Hentikan'),
           ),
         ],
       ),
     );
   }
-}
-
-class _NavigationStep {
-  final String instruction;
-  final int distance;
-  final IconData icon;
-
-  _NavigationStep({
-    required this.instruction,
-    required this.distance,
-    required this.icon,
-  });
 }

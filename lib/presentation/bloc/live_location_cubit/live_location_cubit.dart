@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
@@ -51,9 +50,6 @@ class LiveLocationCubit extends Cubit<LiveLocationState> {
       _startTime = DateTime.now();
       _startDurationTimer();
       _startPositionStream();
-
-      final link = _generateShareableLink();
-      emit(state.copyWith(shareLink: link));
     } catch (e) {
       emit(state.copyWith(
         isSharing: false,
@@ -85,10 +81,15 @@ class LiveLocationCubit extends Cubit<LiveLocationState> {
     ).listen(
       (position) {
         final loc = LatLng(position.latitude, position.longitude);
+        final isFirstLocation = state.currentLocation == null;
         emit(state.copyWith(
           currentLocation: loc,
           accuracy: position.accuracy,
         ));
+        if (isFirstLocation && state.shareLink == null) {
+          final link = _generateShareableLink(loc);
+          emit(state.copyWith(shareLink: link));
+        }
       },
       onError: (e) {
         emit(state.copyWith(error: e.toString()));
@@ -105,12 +106,12 @@ class LiveLocationCubit extends Cubit<LiveLocationState> {
     });
   }
 
-  String _generateShareableLink() {
+  String _generateShareableLink(LatLng location) {
     const uuid = Uuid();
     final shareId = uuid.v4();
 
-    final lat = state.currentLocation?.latitude ?? 0.0;
-    final lng = state.currentLocation?.longitude ?? 0.0;
+    final lat = location.latitude;
+    final lng = location.longitude;
 
     return 'https://mapmarker.app/live?share=$shareId&lat=$lat&lng=$lng';
   }

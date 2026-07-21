@@ -3,12 +3,15 @@ import 'package:uuid/uuid.dart';
 
 import '../../../data/models/folder_model.dart';
 import '../../../data/repositories/folder_repository.dart';
+import '../../../data/repositories/poi_repository.dart';
 import 'folder_state.dart';
 
 class FolderCubit extends Cubit<FolderState> {
   final FolderRepository _folderRepository;
+  final PoiRepository _poiRepository;
 
-  FolderCubit(this._folderRepository) : super(const FolderState());
+  FolderCubit(this._folderRepository, this._poiRepository)
+      : super(const FolderState());
 
   Future<void> loadFolders() async {
     emit(state.copyWith(isLoading: true, clearError: true));
@@ -45,6 +48,7 @@ class FolderCubit extends Cubit<FolderState> {
   Future<void> deleteFolder(String folderId) async {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
+      await _poiRepository.clearFolderForPois(folderId);
       await _folderRepository.deleteFolder(folderId);
       final folders = await _folderRepository.getAllFolders();
       emit(state.copyWith(isLoading: false, folders: folders));

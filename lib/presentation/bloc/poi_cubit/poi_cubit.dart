@@ -1,4 +1,5 @@
-import 'package:collection/collection.dart';
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
@@ -8,14 +9,22 @@ import 'poi_state.dart';
 
 class PoiCubit extends Cubit<PoiState> {
   final PoiRepository _poiRepository;
+  StreamSubscription<List<PoiModel>>? _poisSubscription;
 
   PoiCubit(this._poiRepository) : super(const PoiState());
 
   Future<void> loadPois() async {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
-      final pois = await _poiRepository.getAllPois();
-      emit(state.copyWith(isLoading: false, pois: pois));
+      _poisSubscription?.cancel();
+      _poisSubscription = _poiRepository.watchAllPois().listen(
+        (pois) {
+          emit(state.copyWith(isLoading: false, pois: pois));
+        },
+        onError: (e) {
+          emit(state.copyWith(isLoading: false, error: e.toString()));
+        },
+      );
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
     }
@@ -24,61 +33,51 @@ class PoiCubit extends Cubit<PoiState> {
   Future<void> loadPoisByFolder(String folderId) async {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
-      final pois = await _poiRepository.getPoisByFolder(folderId);
-      emit(state.copyWith(isLoading: false, pois: pois));
+      _poisSubscription?.cancel();
+      _poisSubscription =
+          _poiRepository.watchPoisByFolder(folderId).listen(
+        (pois) {
+          emit(state.copyWith(isLoading: false, pois: pois));
+        },
+        onError: (e) {
+          emit(state.copyWith(isLoading: false, error: e.toString()));
+        },
+      );
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
 
   Future<void> addPoi(PoiModel poi) async {
-    emit(state.copyWith(isLoading: true, clearError: true));
     try {
       await _poiRepository.addPoi(poi);
-      final pois = await _poiRepository.getAllPois();
-      emit(state.copyWith(isLoading: false, pois: pois));
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      emit(state.copyWith(error: e.toString()));
     }
   }
 
   Future<void> updatePoi(PoiModel poi) async {
-    emit(state.copyWith(isLoading: true, clearError: true));
     try {
       await _poiRepository.updatePoi(poi);
-      final pois = await _poiRepository.getAllPois();
-      emit(state.copyWith(isLoading: false, pois: pois));
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      emit(state.copyWith(error: e.toString()));
     }
   }
 
   Future<void> deletePoi(String poiId) async {
-    emit(state.copyWith(isLoading: true, clearError: true));
     try {
       await _poiRepository.deletePoi(poiId);
-      final pois = await _poiRepository.getAllPois();
-      emit(state.copyWith(
-        isLoading: false,
-        pois: pois,
-        clearSelectedPoi: state.selectedPoi?.id == poiId,
-      ));
+      if (state.selectedPoi?.id == poiId) {
+        emit(state.copyWith(clearSelectedPoi: true));
+      }
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      emit(state.copyWith(error: e.toString()));
     }
   }
 
   Future<void> toggleFavorite(String poiId) async {
     try {
       await _poiRepository.toggleFavorite(poiId);
-      final pois = await _poiRepository.getAllPois();
-      final updatedSelected = state.selectedPoi?.id == poiId
-          ? pois.firstWhereOrNull((p) => p.id == poiId)
-          : state.selectedPoi;
-      emit(state.copyWith(
-        pois: pois,
-        selectedPoi: updatedSelected,
-      ));
     } catch (e) {
       emit(state.copyWith(error: e.toString()));
     }
@@ -125,5 +124,11 @@ class PoiCubit extends Cubit<PoiState> {
       createdAt: now,
       updatedAt: now,
     );
+  }
+
+  @override
+  Future<void> close() {
+    _poisSubscription?.cancel();
+    return super.close();
   }
 }

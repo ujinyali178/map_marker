@@ -30,9 +30,7 @@ class _FolderEditorScreenState extends State<FolderEditorScreen> {
 
   void _loadFolderData() {
     final state = context.read<FolderCubit>().state;
-    final folder = state.folders.where((f) => f.id == widget.folderId).isNotEmpty
-        ? state.folders.firstWhere((f) => f.id == widget.folderId)
-        : null;
+    final folder = state.folders.firstWhereOrNull((f) => f.id == widget.folderId);
     if (folder == null) return;
     _nameController.text = folder.name;
     _selectedColor = Color(folder.color);
@@ -179,7 +177,7 @@ class _FolderEditorScreenState extends State<FolderEditorScreen> {
     if (widget.folderId != null) {
       final existing = cubit.state.folders.firstWhereOrNull((f) => f.id == widget.folderId);
       if (existing == null) {
-        if (mounted) Navigator.of(context).pop();
+        setState(() => _isSaving = false);
         return;
       }
       await cubit.updateFolder(existing.copyWith(

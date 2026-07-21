@@ -5,7 +5,6 @@ import 'package:firebase_core/firebase_core.dart';
 
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
-// import 'firebase_options.dart' if (dart.library.io) 'dummy_firebase.dart';
 import 'data/repositories/folder_repository.dart';
 import 'data/repositories/poi_repository.dart';
 import 'data/repositories/sync_repository.dart';
@@ -27,9 +26,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     await Firebase.initializeApp();
-  } catch (_) {
-    // Firebase not configured, running offline
-  }
+  } catch (_) {}
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -50,7 +47,7 @@ void main() async {
     MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => PoiCubit(poiRepository)..loadPois()),
-        BlocProvider(create: (_) => FolderCubit(folderRepository)..loadFolders()),
+        BlocProvider(create: (_) => FolderCubit(folderRepository, poiRepository)..loadFolders()),
         BlocProvider(create: (_) => TrackCubit(trackRepository)),
         BlocProvider(create: (_) => SyncCubit(syncRepository)..loadState()),
         BlocProvider(create: (_) => MapCubit()),

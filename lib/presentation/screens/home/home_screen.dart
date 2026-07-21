@@ -7,6 +7,7 @@ import '../../bloc/poi_cubit/poi_cubit.dart';
 import '../../bloc/poi_cubit/poi_state.dart';
 import '../../bloc/folder_cubit/folder_cubit.dart';
 import '../map/map_screen.dart';
+import '../settings/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -35,17 +36,13 @@ class _HomeScreenState extends State<HomeScreen> {
           const MapScreen(),
           _buildPoiListScreen(theme),
           _buildTracksScreen(theme),
-          const SizedBox.shrink(),
+          const SettingsScreen(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentNavIndex,
         onDestinationSelected: (index) {
-          if (index == 3) {
-            Navigator.of(context).pushNamed('/settings');
-          } else {
-            setState(() => _currentNavIndex = index);
-          }
+          setState(() => _currentNavIndex = index);
         },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.map_outlined), selectedIcon: Icon(Icons.map), label: 'Peta'),

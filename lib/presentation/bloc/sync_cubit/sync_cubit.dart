@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../data/models/sync_model.dart';
 import '../../../data/repositories/sync_repository.dart';
 import 'sync_state.dart';
 
@@ -16,7 +17,8 @@ class SyncCubit extends Cubit<SyncState> {
       emit(SyncState(
         isConnected: syncModel.isConnected,
         interfaceType: syncModel.interfaceType,
-        accountName: syncModel.accountName.isNotEmpty ? syncModel.accountName : null,
+        accountName:
+            syncModel.accountName.isNotEmpty ? syncModel.accountName : null,
         lastSyncTime: syncModel.lastSyncTime,
       ));
     } catch (_) {}
@@ -31,8 +33,12 @@ class SyncCubit extends Cubit<SyncState> {
         interfaceType: SyncInterfaceType.googleDrive,
         accountName: 'user@gmail.com',
       ));
+      await _persistState();
     } catch (e) {
-      emit(state.copyWith(isConnected: false, error: 'Failed to connect to Google Drive: $e'));
+      emit(state.copyWith(
+        isConnected: false,
+        error: 'Failed to connect to Google Drive: $e',
+      ));
     }
   }
 
@@ -45,8 +51,12 @@ class SyncCubit extends Cubit<SyncState> {
         interfaceType: SyncInterfaceType.dropbox,
         accountName: 'user@dropbox.com',
       ));
+      await _persistState();
     } catch (e) {
-      emit(state.copyWith(isConnected: false, error: 'Failed to connect to Dropbox: $e'));
+      emit(state.copyWith(
+        isConnected: false,
+        error: 'Failed to connect to Dropbox: $e',
+      ));
     }
   }
 
@@ -58,13 +68,34 @@ class SyncCubit extends Cubit<SyncState> {
         await Future.delayed(const Duration(milliseconds: 200));
         emit(state.copyWith(progress: i / 100.0));
       }
-      emit(state.copyWith(isSyncing: false, progress: 1.0, lastSyncTime: DateTime.now()));
+      final now = DateTime.now();
+      emit(state.copyWith(
+        isSyncing: false,
+        progress: 1.0,
+        lastSyncTime: now,
+      ));
+      await _persistState(lastSyncTime: now);
     } catch (e) {
-      emit(state.copyWith(isSyncing: false, progress: 0.0, error: 'Sync failed: $e'));
+      emit(state.copyWith(
+        isSyncing: false,
+        progress: 0.0,
+        error: 'Sync failed: $e',
+      ));
     }
   }
 
   void disconnect() {
     emit(const SyncState());
+    _persistState();
+  }
+
+  Future<void> _persistState({DateTime? lastSyncTime}) async {
+    try {
+      await _syncRepository.updateSyncState(SyncModel(
+        interfaceType: state.interfaceType,
+        accountName: state.accountName ?? '',
+        lastSyncTime: lastSyncTime ?? state.lastSyncTime,
+      ));
+    } catch (_) {}
   }
 }
