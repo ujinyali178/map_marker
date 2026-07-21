@@ -1,5 +1,3 @@
-import 'dart:math' show Point;
-
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -128,13 +126,13 @@ class _MapScreenState extends State<MapScreen> {
                                       final screenPos = camera
                                           .latLngToScreenPoint(
                                               _placingLocation!);
-                                      final newScreenPos = Point(
-                                        screenPos.x + details.delta.dx,
-                                        screenPos.y + details.delta.dy,
-                                      );
-                                      final newLatLng = camera
-                                          .screenPointToLatLng(
-                                              newScreenPos);
+                                      final newLatLng =
+                                          camera.offsetToCrs(Offset(
+                                        screenPos.x +
+                                            details.delta.dx,
+                                        screenPos.y +
+                                            details.delta.dy,
+                                      ));
                                       setState(() =>
                                           _placingLocation = newLatLng);
                                     },
