@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/models/folder_model.dart';
 import '../../bloc/folder_cubit/folder_cubit.dart';
+import '../../bloc/folder_cubit/folder_state.dart';
 
 class FolderListScreen extends StatefulWidget {
   const FolderListScreen({super.key});
@@ -80,8 +81,8 @@ class _FolderListScreenState extends State<FolderListScreen> {
       ),
       title: Text(folder.name, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500)),
       subtitle: Text('Folder', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.5))),
-      trailing: hasSubfolders ? null : PopupMenuButton(
-        itemBuilder: (_) => [
+      trailing: hasSubfolders ? null : PopupMenuButton<String>(
+        itemBuilder: (_) => <PopupMenuEntry<String>>[
           const PopupMenuItem(value: 'edit', child: ListTile(leading: Icon(Icons.edit), title: Text('Edit'), dense: true)),
           const PopupMenuDivider(),
           const PopupMenuItem(value: 'delete', child: ListTile(leading: Icon(Icons.delete, color: Colors.red), title: Text('Hapus', style: TextStyle(color: Colors.red)), dense: true)),

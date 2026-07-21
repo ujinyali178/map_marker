@@ -8,11 +8,11 @@ class SyncRepository {
 
   SyncRepository(this._database);
 
-  Future<SyncState> getSyncState() async {
+  Future<SyncModel> getSyncState() async {
     try {
       final row = await _database.getSyncState();
       if (row == null) {
-        return const SyncState();
+        return const SyncModel();
       }
       return _rowToModel(row);
     } catch (e) {
@@ -20,14 +20,14 @@ class SyncRepository {
     }
   }
 
-  Stream<SyncState?> watchSyncState() {
+  Stream<SyncModel?> watchSyncState() {
     return _database.watchSyncState().map((row) {
       if (row == null) return null;
       return _rowToModel(row);
     });
   }
 
-  Future<void> updateSyncState(SyncState state) async {
+  Future<void> updateSyncState(SyncModel state) async {
     try {
       await _database.updateSyncState(_modelToCompanion(state));
     } catch (e) {
@@ -35,8 +35,8 @@ class SyncRepository {
     }
   }
 
-  SyncState _rowToModel(SyncStateTableData row) {
-    return SyncState(
+  SyncModel _rowToModel(SyncStateTableData row) {
+    return SyncModel(
       interfaceType: _parseInterfaceType(row.interfaceType),
       accountName: row.accountName,
       cloudFolderId: row.cloudFolderId,
@@ -49,7 +49,7 @@ class SyncRepository {
     );
   }
 
-  SyncStateTableCompanion _modelToCompanion(SyncState model) {
+  SyncStateTableCompanion _modelToCompanion(SyncModel model) {
     return SyncStateTableCompanion(
       interfaceType: Value(model.interfaceType.name),
       accountName: Value(model.accountName),
@@ -63,10 +63,10 @@ class SyncRepository {
     );
   }
 
-  SyncInterfaceType _parseInterfaceType(String value) {
-    return SyncInterfaceType.values.firstWhere(
+  SyncStateInterfaceType _parseInterfaceType(String value) {
+    return SyncStateInterfaceType.values.firstWhere(
       (e) => e.name == value,
-      orElse: () => SyncInterfaceType.none,
+      orElse: () => SyncStateInterfaceType.none,
     );
   }
 }
