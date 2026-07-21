@@ -20,8 +20,6 @@ class TrackCubit extends Cubit<TrackState> {
   LatLng? _lastPosition;
   final List<LatLng> _trackPoints = [];
 
-  LatLng? _lastPosition;
-
   TrackCubit(this._trackRepository) : super(const TrackState());
 
   Future<void> loadTracks() async {
