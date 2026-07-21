@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../widgets/route_panel.dart';
@@ -33,59 +34,33 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
   static const LatLng _jakartaCenter = LatLng(-6.2088, 106.8456);
 
-  final List<_NavigationStep> _steps = [
-    _NavigationStep(
-      instruction: 'Mulai navigasi dari lokasi Anda',
-      distance: 0,
-      icon: Icons.play_arrow,
-    ),
-    _NavigationStep(
-      instruction: 'Belok kanan ke Jl. Sudirman',
-      distance: 350,
-      icon: Icons.turn_right,
-    ),
-    _NavigationStep(
-      instruction: 'Lurus terus sepanjang 1.2 km',
-      distance: 1200,
-      icon: Icons.straight,
-    ),
-    _NavigationStep(
-      instruction: 'Belok kiri ke Jl. Thamrin',
-      distance: 800,
-      icon: Icons.turn_left,
-    ),
-    _NavigationStep(
-      instruction: 'Lurus terus sepanjang 800 m',
-      distance: 800,
-      icon: Icons.straight,
-    ),
-    _NavigationStep(
-      instruction: 'Belok kanan ke Jl. MH Thamrin',
-      distance: 450,
-      icon: Icons.turn_right,
-    ),
-    _NavigationStep(
-      instruction: 'Lokasi tujuan ada di sebelah kiri',
-      distance: 200,
-      icon: Icons.location_on,
-    ),
-  ];
-
-  final List<LatLng> _routePoints = const [
-    LatLng(-6.2088, 106.8456),
-    LatLng(-6.2050, 106.8470),
-    LatLng(-6.2000, 106.8500),
-    LatLng(-6.1950, 106.8550),
-    LatLng(-6.1900, 106.8600),
-    LatLng(-6.1850, 106.8620),
-    LatLng(-6.1800, 106.8640),
-    LatLng(-6.1751, 106.8650),
-  ];
+  List<_NavigationStep> _steps = [];
+  List<LatLng> _routePoints = [];
 
   @override
   void initState() {
     super.initState();
+    _initRoute();
     _startSimulation();
+  }
+
+  void _initRoute() {
+    final dest = widget.destination ?? _jakartaCenter;
+    _routePoints = [
+      _jakartaCenter,
+      dest,
+    ];
+    final dist = Geolocator.distanceBetween(
+      _jakartaCenter.latitude, _jakartaCenter.longitude,
+      dest.latitude, dest.longitude,
+    );
+    _remainingDistance = dist;
+    _remainingTime = Duration(seconds: (dist / 10).round());
+    _steps = [
+      _NavigationStep(instruction: 'Mulai navigasi dari lokasi Anda', distance: 0, icon: Icons.play_arrow),
+      _NavigationStep(instruction: 'Menuju ${widget.destinationName ?? "tujuan"}', distance: dist.round(), icon: Icons.straight),
+      _NavigationStep(instruction: 'Lokasi tujuan ada di sekitar Anda', distance: 0, icon: Icons.location_on),
+    ];
   }
 
   void _startSimulation() {

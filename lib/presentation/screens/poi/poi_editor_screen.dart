@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 import '../../../data/models/poi_model.dart';
@@ -420,6 +421,7 @@ class _PoiEditorScreenState extends State<PoiEditorScreen> {
     final images = _images.map((x) => x.path).toList();
 
     if (widget.poiId != null) {
+      final existing = cubit.state.pois.firstWhereOrNull((p) => p.id == widget.poiId);
       await cubit.updatePoi(PoiModel(
         id: widget.poiId!,
         name: _nameController.text.trim(),
@@ -430,8 +432,10 @@ class _PoiEditorScreenState extends State<PoiEditorScreen> {
         iconKey: _selectedIconKey,
         folderId: _selectedFolderId,
         images: images,
-        createdAt: DateTime.now(),
+        createdAt: existing?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
+        isFavorite: existing?.isFavorite ?? false,
+        note: _noteController.text.trim(),
       ));
     } else {
       await cubit.addPoi(cubit.createNewPoi(

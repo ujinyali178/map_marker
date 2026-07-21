@@ -27,6 +27,7 @@ class SearchCubit extends Cubit<SearchState> {
         url,
         headers: {
           'Accept': 'application/json',
+          'User-Agent': 'MapMarker/1.0 (Flutter POI app)',
         },
       );
 

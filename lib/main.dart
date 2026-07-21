@@ -19,6 +19,7 @@ import 'presentation/bloc/nav_cubit/nav_cubit.dart';
 import 'presentation/bloc/poi_cubit/poi_cubit.dart';
 import 'presentation/bloc/search_cubit/search_cubit.dart';
 import 'presentation/bloc/settings_cubit/settings_cubit.dart';
+import 'presentation/bloc/settings_cubit/settings_state.dart';
 import 'presentation/bloc/sync_cubit/sync_cubit.dart';
 import 'presentation/bloc/track_cubit/track_cubit.dart';
 
@@ -67,17 +68,32 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  ThemeMode _mapThemeMode(ThemeModeOption option) {
+    switch (option) {
+      case ThemeModeOption.light:
+        return ThemeMode.light;
+      case ThemeModeOption.dark:
+        return ThemeMode.dark;
+      case ThemeModeOption.system:
+        return ThemeMode.system;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final appRouter = AppRouter();
 
-    return MaterialApp(
-      title: 'Map Marker',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
-      onGenerateRoute: appRouter.onGenerateRoute,
+    return BlocBuilder<SettingsCubit, SettingsState>(
+      builder: (context, settingsState) {
+        return MaterialApp(
+          title: 'Map Marker',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: _mapThemeMode(settingsState.themeMode),
+          onGenerateRoute: appRouter.onGenerateRoute,
+        );
+      },
     );
   }
 }

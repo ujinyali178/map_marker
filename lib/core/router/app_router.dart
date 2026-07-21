@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../presentation/screens/folder/folder_editor_screen.dart';
@@ -24,6 +25,9 @@ class AppRouter {
 
       case '/map':
         return MaterialPageRoute(builder: (_) => const MapScreen(), settings: settings);
+
+      case '/map/select-location':
+        return MaterialPageRoute(builder: (_) => const _SelectLocationScreen(), settings: settings);
 
       case '/poi/editor':
         final args = settings.arguments as Map<String, dynamic>?;
@@ -84,5 +88,69 @@ class AppRouter {
           settings: settings,
         );
     }
+  }
+}
+
+class _SelectLocationScreen extends StatefulWidget {
+  const _SelectLocationScreen();
+
+  @override
+  State<_SelectLocationScreen> createState() => _SelectLocationScreenState();
+}
+
+class _SelectLocationScreenState extends State<_SelectLocationScreen> {
+  LatLng? _selectedPoint;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Pilih Lokasi'),
+        actions: [
+          TextButton(
+            onPressed: _selectedPoint != null
+                ? () => Navigator.of(context).pop({
+                    'latitude': _selectedPoint!.latitude,
+                    'longitude': _selectedPoint!.longitude,
+                  })
+                : null,
+            child: const Text('Pilih'),
+          ),
+        ],
+      ),
+      body: FlutterMap(
+        options: MapOptions(
+          initialCenter: const LatLng(-6.2088, 106.8456),
+          initialZoom: 13,
+          onTap: (tapPosition, point) {
+            setState(() => _selectedPoint = point);
+          },
+        ),
+        children: [
+          TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName: 'com.mapmarker.app',
+            maxZoom: 19,
+          ),
+          if (_selectedPoint != null)
+            MarkerLayer(
+              markers: [
+                Marker(
+                  width: 40,
+                  height: 52,
+                  point: _selectedPoint!,
+                  child: Icon(
+                    Icons.add_location_alt,
+                    color: theme.colorScheme.error,
+                    size: 40,
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
   }
 }

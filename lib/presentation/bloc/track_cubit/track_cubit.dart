@@ -18,6 +18,8 @@ class TrackCubit extends Cubit<TrackState> {
   DateTime? _pauseTime;
   Duration _pausedDuration = Duration.zero;
 
+  LatLng? _lastPosition;
+
   TrackCubit(this._trackRepository) : super(const TrackState());
 
   Future<void> loadTracks() async {
@@ -156,10 +158,12 @@ class TrackCubit extends Cubit<TrackState> {
       _trackRepository.addPoint(state.currentTrack!.id, point);
     } catch (_) {}
 
-    double newDistance = state.distance + _haversine(
-      LatLng(position.latitude, position.longitude),
-      LatLng(position.latitude, position.longitude),
-    );
+    final currentPoint = LatLng(position.latitude, position.longitude);
+    double newDistance = state.distance;
+    if (_lastPosition != null) {
+      newDistance += _haversine(_lastPosition!, currentPoint);
+    }
+    _lastPosition = currentPoint;
 
     emit(state.copyWith(
       pointsCount: state.pointsCount + 1,

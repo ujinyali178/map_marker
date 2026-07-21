@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
@@ -72,7 +73,7 @@ class PoiCubit extends Cubit<PoiState> {
       await _poiRepository.toggleFavorite(poiId);
       final pois = await _poiRepository.getAllPois();
       final updatedSelected = state.selectedPoi?.id == poiId
-          ? pois.firstWhere((p) => p.id == poiId)
+          ? pois.firstWhereOrNull((p) => p.id == poiId)
           : state.selectedPoi;
       emit(state.copyWith(
         pois: pois,

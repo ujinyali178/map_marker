@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -14,6 +16,7 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -23,9 +26,17 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      context.read<SearchCubit>().search(query);
+    });
   }
 
   @override
@@ -39,7 +50,7 @@ class _SearchScreenState extends State<SearchScreen> {
             title: TextField(
               controller: _searchController,
               focusNode: _focusNode,
-              onChanged: (query) => context.read<SearchCubit>().search(query),
+              onChanged: _onSearchChanged,
               style: theme.textTheme.bodyLarge,
               decoration: InputDecoration(
                 hintText: 'Cari lokasi...',

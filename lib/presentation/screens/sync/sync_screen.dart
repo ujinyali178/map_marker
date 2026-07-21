@@ -23,12 +23,14 @@ class SyncScreen extends StatelessWidget {
               Text('Layanan Cloud', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               _buildServiceCard(
+                context,
                 theme, icon: Icons.cloud, title: 'Google Drive', isConnected: state.interfaceType == SyncInterfaceType.googleDrive,
                 onConnect: () => context.read<SyncCubit>().connectToGoogleDrive(),
                 color: Colors.blue,
               ),
               const SizedBox(height: 12),
               _buildServiceCard(
+                context,
                 theme, icon: Icons.cloud_queue, title: 'Dropbox', isConnected: state.interfaceType == SyncInterfaceType.dropbox,
                 onConnect: () => context.read<SyncCubit>().connectToDropbox(),
                 color: Colors.indigo,
@@ -120,6 +122,7 @@ class SyncScreen extends StatelessWidget {
   }
 
   Widget _buildServiceCard(
+    BuildContext context,
     ThemeData theme, {
     required IconData icon, required String title,
     required bool isConnected, required VoidCallback onConnect,
@@ -141,7 +144,7 @@ class SyncScreen extends StatelessWidget {
         subtitle: Text(isConnected ? 'Terhubung' : 'Tidak terhubung',
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.4))),
         trailing: isConnected
-            ? TextButton(onPressed: () {}, child: const Text('Putuskan', style: TextStyle(color: Colors.red)))
+            ? TextButton(onPressed: () => context.read<SyncCubit>().disconnect(), child: const Text('Putuskan', style: TextStyle(color: Colors.red)))
             : FilledButton.tonal(onPressed: onConnect, child: const Text('Hubungkan')),
       ),
     );

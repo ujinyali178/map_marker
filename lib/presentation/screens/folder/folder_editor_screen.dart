@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
@@ -176,7 +177,11 @@ class _FolderEditorScreenState extends State<FolderEditorScreen> {
 
     final cubit = context.read<FolderCubit>();
     if (widget.folderId != null) {
-      final existing = cubit.state.folders.firstWhere((f) => f.id == widget.folderId);
+      final existing = cubit.state.folders.firstWhereOrNull((f) => f.id == widget.folderId);
+      if (existing == null) {
+        if (mounted) Navigator.of(context).pop();
+        return;
+      }
       await cubit.updateFolder(existing.copyWith(
         name: _nameController.text.trim(),
         color: _selectedColor.value,
