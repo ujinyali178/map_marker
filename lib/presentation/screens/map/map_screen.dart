@@ -80,6 +80,8 @@ class _MapScreenState extends State<MapScreen> {
                                 _isLongPressPlacing = false;
                                 _longPressLocation = null;
                               });
+                            } else {
+                              setState(() => _selectedPoi = null);
                             }
                           },
                         ),
@@ -277,7 +279,7 @@ class _MapScreenState extends State<MapScreen> {
                       if (_isLongPressPlacing)
                         Positioned.fill(
                           child: GestureDetector(
-                            behavior: HitTestBehavior.translucent,
+                            behavior: HitTestBehavior.deferToChild,
                             onTap: () => setState(() {
                               _isLongPressPlacing = false;
                               _longPressLocation = null;
@@ -319,19 +321,17 @@ class _MapScreenState extends State<MapScreen> {
                                             ),
                                             FilledButton(
                                               onPressed: () {
-                                                setState(() =>
-                                                    _isLongPressPlacing =
-                                                        false);
+                                                final loc = _longPressLocation;
+                                                setState(() {
+                                                  _isLongPressPlacing = false;
+                                                  _longPressLocation = null;
+                                                });
                                                 Navigator.of(context)
                                                     .pushNamed(
                                                   '/poi/editor',
                                                   arguments: {
-                                                    'latitude':
-                                                        _longPressLocation
-                                                            ?.latitude,
-                                                    'longitude':
-                                                        _longPressLocation
-                                                            ?.longitude,
+                                                    'latitude': loc?.latitude,
+                                                    'longitude': loc?.longitude,
                                                   },
                                                 );
                                               },
@@ -384,8 +384,12 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _selectPoi(PoiModel poi) {
-    setState(() => _selectedPoi = poi);
-    _showPoiBottomSheet(poi);
+    final freshPoi = context.read<PoiCubit>().state.pois.where(
+      (p) => p.id == poi.id,
+    ).firstOrNull;
+    final target = freshPoi ?? poi;
+    setState(() => _selectedPoi = target);
+    _showPoiBottomSheet(target);
   }
 
   void _showPoiBottomSheet(PoiModel poi) {
