@@ -28,8 +28,7 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
   bool _isNavigating = false;
-  bool _isLongPressPlacing = false;
-  LatLng? _longPressLocation;
+  LatLng? _placingLocation;
   PoiModel? _selectedPoi;
 
   GlobalKey<ScaffoldState> get _scaffoldKey =>
@@ -44,11 +43,20 @@ class _MapScreenState extends State<MapScreen> {
     MapTypeOption.hybrid: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   };
 
+  bool get _isPlacing => _placingLocation != null;
+
   @override
   void initState() {
     super.initState();
     context.read<PoiCubit>().loadPois();
     context.read<MapCubit>().getCurrentLocation();
+    context.read<MapCubit>().startLocationStream();
+  }
+
+  @override
+  void dispose() {
+    context.read<MapCubit>().stopLocationStream();
+    super.dispose();
   }
 
   @override
@@ -75,11 +83,8 @@ class _MapScreenState extends State<MapScreen> {
                           initialZoom: settingsState.defaultZoom,
                           onLongPress: _onMapLongPress,
                           onTap: (_, __) {
-                            if (_isLongPressPlacing) {
-                              setState(() {
-                                _isLongPressPlacing = false;
-                                _longPressLocation = null;
-                              });
+                            if (_isPlacing) {
+                              setState(() => _placingLocation = null);
                             } else {
                               setState(() => _selectedPoi = null);
                             }
@@ -106,27 +111,122 @@ class _MapScreenState extends State<MapScreen> {
                               );
                             }).toList(),
                           ),
+                          if (_placingLocation != null)
+                            MarkerLayer(
+                              markers: [
+                                Marker(
+                                  width: 48,
+                                  height: 56,
+                                  point: _placingLocation!,
+                                  child: GestureDetector(
+                                    onPanUpdate: (details) {
+                                      final camera =
+                                          _mapController.camera;
+                                      final screenPos = camera
+                                          .latLngToScreenPoint(
+                                              _placingLocation!);
+                                      final newScreenPos = screenPos +
+                                          Offset(details.delta.dx,
+                                              details.delta.dy);
+                                      final newLatLng = camera
+                                          .screenPointToLatLng(
+                                              newScreenPos);
+                                      setState(() =>
+                                          _placingLocation = newLatLng);
+                                    },
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          padding:
+                                              const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: theme
+                                                .colorScheme.primaryContainer,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black
+                                                    .withValues(alpha: 0.2),
+                                                blurRadius: 4,
+                                                offset:
+                                                    const Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Row(
+                                            mainAxisSize:
+                                                MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.open_with,
+                                                size: 12,
+                                                color: theme.colorScheme
+                                                    .onPrimaryContainer,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'Geser untuk adjust',
+                                                style: theme
+                                                    .textTheme.labelSmall,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Icon(
+                                          Icons.location_on,
+                                          color:
+                                              theme.colorScheme.error,
+                                          size: 40,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           if (mapState.currentLocation != null)
                             MarkerLayer(
                               markers: [
                                 Marker(
-                                  width: 24,
-                                  height: 24,
+                                  width: 32,
+                                  height: 32,
                                   point: mapState.currentLocation!,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Colors.white,
-                                        width: 3,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black
-                                              .withValues(alpha: 0.3),
-                                          blurRadius: 6,
-                                          spreadRadius: 2,
+                                  child: Transform.rotate(
+                                    angle: mapState.heading *
+                                        (3.14159265 / 180),
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        Container(
+                                          width: 24,
+                                          height: 24,
+                                          decoration: BoxDecoration(
+                                            color: Colors.blue,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors.white,
+                                              width: 3,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black
+                                                    .withValues(
+                                                        alpha: 0.3),
+                                                blurRadius: 6,
+                                                spreadRadius: 2,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        CustomPaint(
+                                          size: const Size(20, 20),
+                                          painter: _DirectionPainter(
+                                              color: Colors.white),
                                         ),
                                       ],
                                     ),
@@ -186,7 +286,9 @@ class _MapScreenState extends State<MapScreen> {
                             FloatingActionButton.small(
                               heroTag: 'my_location',
                               onPressed: () {
-                                context.read<MapCubit>().getCurrentLocation();
+                                context
+                                    .read<MapCubit>()
+                                    .getCurrentLocation();
                               },
                               child: const Icon(Icons.my_location),
                             ),
@@ -240,73 +342,92 @@ class _MapScreenState extends State<MapScreen> {
                           child: const Icon(Icons.menu),
                         ),
                       ),
-                      if (_isLongPressPlacing)
-                        Positioned.fill(
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.deferToChild,
-                            onTap: () => setState(() {
-                              _isLongPressPlacing = false;
-                              _longPressLocation = null;
-                            }),
-                            child: Container(
-                              color: Colors.black.withValues(alpha: 0.3),
-                              child: Center(
-                                child: Card(
-                                  margin: const EdgeInsets.symmetric(
-                                      horizontal: 32),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(20),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.add_location_alt,
-                                          size: 48,
-                                          color: theme.colorScheme.primary,
-                                        ),
-                                        const SizedBox(height: 12),
-                                        Text(
-                                          'Buat POI baru di lokasi ini?',
-                                          style:
-                                              theme.textTheme.titleMedium,
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceEvenly,
-                                          children: [
-                                            TextButton(
-                                              onPressed: () => setState(() {
-                                                _isLongPressPlacing = false;
-                                                _longPressLocation = null;
-                                              }),
-                                              child: const Text('Batal'),
-                                            ),
-                                            FilledButton(
-                                              onPressed: () {
-                                                final loc = _longPressLocation;
-                                                setState(() {
-                                                  _isLongPressPlacing = false;
-                                                  _longPressLocation = null;
-                                                });
-                                                Navigator.of(context)
-                                                    .pushNamed(
-                                                  '/poi/editor',
-                                                  arguments: {
-                                                    'latitude': loc?.latitude,
-                                                    'longitude': loc?.longitude,
-                                                  },
-                                                );
-                                              },
-                                              child: const Text('Buat POI'),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
+                      if (_isPlacing)
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: Container(
+                            padding: EdgeInsets.fromLTRB(
+                              16,
+                              16,
+                              16,
+                              MediaQuery.of(context).padding.bottom + 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surface,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black
+                                      .withValues(alpha: 0.1),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, -2),
+                                ),
+                              ],
+                            ),
+                            child: SafeArea(
+                              top: false,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.open_with,
+                                    color:
+                                        theme.colorScheme.onSurface
+                                            .withValues(alpha: 0.4),
+                                    size: 20,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Geser pin ke lokasi yang diinginkan',
+                                    style: theme.textTheme.bodySmall
+                                        ?.copyWith(
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.6),
                                     ),
                                   ),
-                                ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton(
+                                          onPressed: () =>
+                                              setState(() =>
+                                                  _placingLocation =
+                                                      null),
+                                          child: const Text('Batal'),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        flex: 2,
+                                        child: FilledButton.icon(
+                                          onPressed: () {
+                                            final loc =
+                                                _placingLocation;
+                                            setState(() =>
+                                                _placingLocation =
+                                                    null);
+                                            Navigator.of(context)
+                                                .pushNamed(
+                                              '/poi/editor',
+                                              arguments: {
+                                                'latitude':
+                                                    loc?.latitude,
+                                                'longitude':
+                                                    loc?.longitude,
+                                              },
+                                            );
+                                          },
+                                          icon: const Icon(
+                                              Icons.add_location),
+                                          label:
+                                              const Text('Buat POI'),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -319,10 +440,14 @@ class _MapScreenState extends State<MapScreen> {
           );
         },
       ),
-      floatingActionButton: !_isNavigating
+      floatingActionButton: !_isPlacing
           ? FloatingActionButton.extended(
-              onPressed: () =>
-                  Navigator.of(context).pushNamed('/poi/editor'),
+              onPressed: () {
+                final center =
+                    _mapController.camera.center;
+                setState(
+                    () => _placingLocation = center);
+              },
               icon: const Icon(Icons.add),
               label: const Text('Tambah POI'),
             )
@@ -330,27 +455,19 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  void _openSearch() async {
-    final result = await Navigator.of(context).pushNamed('/search');
-    if (result != null && result is Map<String, dynamic> && mounted) {
-      final lat = result['latitude'] as double;
-      final lng = result['longitude'] as double;
-      final target = LatLng(lat, lng);
-      _mapController.move(target, 15);
-    }
-  }
-
   void _onMapLongPress(TapPosition tapPosition, LatLng point) {
-    setState(() {
-      _longPressLocation = point;
-      _isLongPressPlacing = true;
-    });
+    if (_isPlacing) return;
+    setState(() => _placingLocation = point);
   }
 
   void _selectPoi(PoiModel poi) {
-    final freshPoi = context.read<PoiCubit>().state.pois.where(
-      (p) => p.id == poi.id,
-    ).firstOrNull;
+    if (_isPlacing) return;
+    final freshPoi = context
+        .read<PoiCubit>()
+        .state
+        .pois
+        .where((p) => p.id == poi.id)
+        .firstOrNull;
     final target = freshPoi ?? poi;
     setState(() => _selectedPoi = target);
     _showPoiBottomSheet(target);
@@ -498,4 +615,30 @@ class _MapScreenState extends State<MapScreen> {
     };
     return iconMap[iconKey] ?? Icons.location_on;
   }
+}
+
+class _DirectionPainter extends CustomPainter {
+  final Color color;
+
+  _DirectionPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    path.moveTo(size.width / 2, 0);
+    path.lineTo(size.width, size.height * 0.75);
+    path.lineTo(size.width / 2, size.height * 0.55);
+    path.lineTo(0, size.height * 0.75);
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _DirectionPainter old) =>
+      old.color != color;
 }
