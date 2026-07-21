@@ -106,42 +106,6 @@ class _MapScreenState extends State<MapScreen> {
                               );
                             }).toList(),
                           ),
-                          if (_longPressLocation != null)
-                            MarkerLayer(
-                              markers: [
-                                Marker(
-                                  width: 40,
-                                  height: 52,
-                                  point: _longPressLocation!,
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.add_location_alt,
-                                        color: theme.colorScheme.primary,
-                                        size: 36,
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: theme
-                                              .colorScheme.primaryContainer,
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          'Tap untuk simpan',
-                                          style: theme.textTheme.labelSmall,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
                           if (mapState.currentLocation != null)
                             MarkerLayer(
                               markers: [
