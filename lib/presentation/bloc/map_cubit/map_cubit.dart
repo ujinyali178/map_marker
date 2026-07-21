@@ -146,7 +146,7 @@ class MapCubit extends Cubit<MapState> {
         final currentLoc = LatLng(position.latitude, position.longitude);
         emit(state.copyWith(
           currentLocation: currentLoc,
-          heading: position.heading,
+          heading: position.heading ?? 0,
         ));
       },
       onError: (e) {
