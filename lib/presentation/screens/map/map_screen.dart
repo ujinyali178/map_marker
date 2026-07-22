@@ -217,18 +217,17 @@ class _MapScreenState extends State<MapScreen> {
                                             boxShadow: [
                                               BoxShadow(
                                                 color: Colors.black
-                                                    .withValues(
-                                                        alpha: 0.3),
+                                                    .withValues(alpha: 0.3),
                                                 blurRadius: 6,
                                                 spreadRadius: 2,
                                               ),
                                             ],
                                           ),
                                         ),
-                                        CustomPaint(
-                                          size: const Size(20, 20),
-                                          painter: _DirectionPainter(
-                                              color: Colors.white),
+                                        const Icon(
+                                          Icons.navigation,
+                                          color: Colors.white,
+                                          size: 14,
                                         ),
                                       ],
                                     ),
@@ -617,30 +616,4 @@ class _MapScreenState extends State<MapScreen> {
     };
     return iconMap[iconKey] ?? Icons.location_on;
   }
-}
-
-class _DirectionPainter extends CustomPainter {
-  final Color color;
-
-  _DirectionPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    final path = Path();
-    path.moveTo(size.width / 2, 0);
-    path.lineTo(size.width, size.height * 0.75);
-    path.lineTo(size.width / 2, size.height * 0.55);
-    path.lineTo(0, size.height * 0.75);
-    path.close();
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _DirectionPainter old) =>
-      old.color != color;
 }
