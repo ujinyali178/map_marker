@@ -1,0 +1,16 @@
+package org.mapsforge.core.graphics;
+
+import org.mapsforge.core.model.Dimension;
+
+/* loaded from: /root/release/classes2.dex */
+public interface Canvas extends GraphicContext {
+    void destroy();
+
+    Dimension getDimension();
+
+    int getHeight();
+
+    int getWidth();
+
+    void setBitmap(Bitmap bitmap);
+}

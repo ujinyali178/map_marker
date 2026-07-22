@@ -1,0 +1,42 @@
+package com.google.android.gms.signin.internal;
+
+import android.os.Parcel;
+
+/* loaded from: /root/release/classes.dex */
+public abstract class zad extends com.google.android.gms.internal.base.zab implements zae {
+    public zad() {
+        super("com.google.android.gms.signin.internal.ISignInCallbacks");
+    }
+
+    @Override // com.google.android.gms.internal.base.zab
+    protected final boolean zaa(int i3, Parcel parcel, Parcel parcel2, int i4) {
+        switch (i3) {
+            case 3:
+                com.google.android.gms.internal.base.zac.zab(parcel);
+                parcel2.writeNoException();
+                return true;
+            case 4:
+            case 6:
+                com.google.android.gms.internal.base.zac.zab(parcel);
+                parcel2.writeNoException();
+                return true;
+            case 5:
+            default:
+                return false;
+            case 7:
+                com.google.android.gms.internal.base.zac.zab(parcel);
+                parcel2.writeNoException();
+                return true;
+            case 8:
+                zak zakVar = (zak) com.google.android.gms.internal.base.zac.zaa(parcel, zak.CREATOR);
+                com.google.android.gms.internal.base.zac.zab(parcel);
+                zab(zakVar);
+                parcel2.writeNoException();
+                return true;
+            case 9:
+                com.google.android.gms.internal.base.zac.zab(parcel);
+                parcel2.writeNoException();
+                return true;
+        }
+    }
+}

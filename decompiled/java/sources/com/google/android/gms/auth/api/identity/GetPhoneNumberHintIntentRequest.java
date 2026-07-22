@@ -1,0 +1,52 @@
+package com.google.android.gms.auth.api.identity;
+
+import android.os.Parcel;
+import android.os.Parcelable;
+import com.google.android.gms.common.internal.Objects;
+import com.google.android.gms.common.internal.safeparcel.AbstractSafeParcelable;
+import com.google.android.gms.common.internal.safeparcel.SafeParcelWriter;
+
+/* loaded from: /root/release/classes.dex */
+public class GetPhoneNumberHintIntentRequest extends AbstractSafeParcelable {
+    public static final Parcelable.Creator<GetPhoneNumberHintIntentRequest> CREATOR = new zbj();
+    private final int zba;
+
+    public static final class Builder {
+        private Builder() {
+        }
+
+        /* synthetic */ Builder(zbi zbiVar) {
+        }
+
+        public GetPhoneNumberHintIntentRequest build() {
+            return new GetPhoneNumberHintIntentRequest(0);
+        }
+    }
+
+    GetPhoneNumberHintIntentRequest(int i3) {
+        this.zba = i3;
+    }
+
+    public static Builder builder() {
+        return new Builder(null);
+    }
+
+    public boolean equals(Object obj) {
+        if (obj instanceof GetPhoneNumberHintIntentRequest) {
+            return Objects.equal(Integer.valueOf(this.zba), Integer.valueOf(((GetPhoneNumberHintIntentRequest) obj).zba));
+        }
+        return false;
+    }
+
+    public int hashCode() {
+        return Objects.hashCode(Integer.valueOf(this.zba));
+    }
+
+    @Override // android.os.Parcelable
+    public void writeToParcel(Parcel parcel, int i3) {
+        int i4 = this.zba;
+        int beginObjectHeader = SafeParcelWriter.beginObjectHeader(parcel);
+        SafeParcelWriter.writeInt(parcel, 1, i4);
+        SafeParcelWriter.finishObjectHeader(parcel, beginObjectHeader);
+    }
+}

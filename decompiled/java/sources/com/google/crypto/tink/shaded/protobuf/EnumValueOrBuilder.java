@@ -1,0 +1,18 @@
+package com.google.crypto.tink.shaded.protobuf;
+
+import java.util.List;
+
+/* loaded from: /root/release/classes.dex */
+public interface EnumValueOrBuilder extends MessageLiteOrBuilder {
+    String getName();
+
+    ByteString getNameBytes();
+
+    int getNumber();
+
+    Option getOptions(int i3);
+
+    int getOptionsCount();
+
+    List<Option> getOptionsList();
+}

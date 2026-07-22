@@ -1,0 +1,21 @@
+# Binary files (too large / not useful as text)
+release/
+libappTmp/
+*.apk
+*.zip
+*.dex
+*.so
+*.arsc
+*.bin
+NOTICES.Z
+
+# Compiled Flutter assets
+release/assets/flutter_assets/
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
